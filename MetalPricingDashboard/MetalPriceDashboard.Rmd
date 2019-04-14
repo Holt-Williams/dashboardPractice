@@ -1,0 +1,87 @@
+---
+title: "Gold, Platinum, Silver, Palladium pricing over several periods"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ggplot2)
+library(tidyquant)
+
+
+SixMonthsPrices <- tq_get(c("Plat", "Gold","Silver", "Palladium"), get = "metal.prices", 
+                         from = Sys.Date() - lubridate::days(180),
+                         base.currency = "USD")
+OneMonthPrices <- tq_get(c("Plat", "Gold","Silver", "Palladium"), get = "metal.prices", 
+                        from = Sys.Date() - lubridate::days(30),
+                        base.currency = "USD")
+
+OneWeekPrices <- tq_get(c("Plat", "Gold","Silver", "Palladium"), get = "metal.prices", 
+                        from = Sys.Date() - lubridate::days(7),
+                        base.currency = "USD")
+log_returns<- SixMonthsPrices%>%
+  group_by(symbol)%>%
+  tq_transmute(select= price,
+               mutate_fun=periodReturn,
+               period="daily",
+               type="log",
+               col_rename="monthly.returns")
+
+
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### 180 days
+
+```{r}
+SixMonthsPrices%>%group_by(symbol)%>%
+  ggplot(aes(x = date, y = price, color = symbol)) +
+  geom_line(size = 1) +
+  labs(title = "Daily Metal Prices: 6 Months",
+       x = "", y = "Price ($)", color = "") +
+  facet_wrap(~ symbol, ncol = 2, scales = "free_y") +
+  scale_y_continuous(labels = scales::dollar) +
+  theme_tq() + 
+  scale_color_tq()
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### 30 days
+```{r}
+OneMonthPrices%>%
+ group_by(symbol)%>%
+  ggplot(aes(x = date, y = price, color = symbol)) +
+  geom_line(size = 1) +
+  labs(title = "Daily Metal Prices: 30 days",
+       x = "", y = "Price ($)", color = "") +
+  facet_wrap(~ symbol, ncol = 2, scales = "free_y") +
+  scale_y_continuous(labels = scales::dollar) +
+  theme_tq() + 
+  scale_color_tq()
+
+```
+
+### Daily Log Returns
+
+```{r}
+log_returns %>%
+  ggplot(aes(x = monthly.returns, fill = symbol)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Charting the Daily Log Returns",
+       x = "Monthly Returns", y = "Density") +
+  theme_tq() +
+  scale_fill_tq() + 
+  facet_wrap(~ symbol, ncol = 2)
+
+
+
+```
+
